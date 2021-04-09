@@ -24,32 +24,40 @@ class MyStreamListener(tweepy.StreamListener):
         self.stream_name = stream_name
 
     def on_data(self, data):
-        tweet = json.loads(data)
         # TODO: retry publishing here and handle errors
         self.firehose_client.put_record(
             DeliveryStreamName=self.stream_name,
-            Record={'Data': tweet},
+            Record={'Data': data},
         )
-        logger.info("Publishing record to the stream: %s", tweet)
+        logger.info("Published tweet to kinesis firehose")
+        logger.debug("Publishing record to the stream: %s", json.dumps(data))
         return True
 
     def on_status(self, status):
         logger.info("Received status: %s", status.text)
 
     def on_error(self, status_code):
-        logger.info("Got an error with status code: %i", status_code)
         if status_code == 420:
-            # returning False in on_data disconnects the stream
+            logging.warn("Rate limit exceeded.")
             # TODO: implement back off here to prevent disconnecting
-            return False
+            return True
+
+        logger.error("Got an error with status code: %i - restarting the stream", status_code)
+        # returning False in on_data disconnects the stream
+        return True
 
 
 def main(stream_name):
     auth = tweepy.OAuthHandler(TWITTER_API_KEY, TWITTER_API_SECRET_KEY)
     auth.set_access_token(TWITTER_ACCESS_TOKEN, TWITTER_ACCESS_TOKEN_SECRET)
     stream_listener = MyStreamListener(stream_name)
-    stream = tweepy.Stream(auth=auth, listener=stream_listener)
-    stream.filter(track=['python'])
+
+    while True:
+        try:
+            stream = tweepy.Stream(auth=auth, listener=stream_listener)
+            stream.filter(track=['python'])
+        except Exception as ex:
+            logging.error("Stream would have died, caught exception", exc_info=ex)
 
 
 if __name__ == '__main__':
