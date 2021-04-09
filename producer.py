@@ -2,6 +2,7 @@ import datetime
 import logging
 import os
 import json
+import sys
 import random
 
 import boto3
@@ -24,7 +25,6 @@ class MyStreamListener(tweepy.StreamListener):
         self.stream_name = stream_name
 
     def on_data(self, data):
-        # TODO: retry publishing here and handle errors
         self.firehose_client.put_record(
             DeliveryStreamName=self.stream_name,
             Record={'Data': data},
@@ -39,11 +39,10 @@ class MyStreamListener(tweepy.StreamListener):
     def on_error(self, status_code):
         if status_code == 420:
             logging.warn("Rate limit exceeded.")
-            # TODO: implement back off here to prevent disconnecting
             return True
 
         logger.error("Got an error with status code: %i - restarting the stream", status_code)
-        # returning False in on_data disconnects the stream
+        # returning False disconnects the stream
         return True
 
 
@@ -56,6 +55,12 @@ def main(stream_name):
         try:
             stream = tweepy.Stream(auth=auth, listener=stream_listener)
             stream.filter(track=['python'])
+        except KeyboardInterrupt:
+            logging.info("Killing streaming process...")
+            try:
+                sys.exit(0)
+            except SystemExit:
+                os._exit(0)
         except Exception as ex:
             logging.error("Stream would have died, caught exception", exc_info=ex)
 
