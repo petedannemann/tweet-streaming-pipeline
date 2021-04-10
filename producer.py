@@ -25,6 +25,7 @@ class MyStreamListener(tweepy.StreamListener):
         self.stream_name = stream_name
 
     def on_data(self, data):
+        # TODO: batch these puts
         self.firehose_client.put_record(
             DeliveryStreamName=self.stream_name,
             Record={'Data': data},
