@@ -23,21 +23,21 @@ workflows:
     jobs:
       - build-and-test
       - aws-ecr/build-and-push-image:
-        repo: '${CIRCLE_PROJECT_REPONAME}'
-        tag: '${CIRCLE_SHA1}'
-        filters:
-          branches:
-            only:
-              - master
-        requires:
-          - build-and-test
+          repo: '${CIRCLE_PROJECT_REPONAME}'
+          tag: '${CIRCLE_SHA1}'
+          filters:
+            branches:
+              only:
+                - master
+          requires:
+            - build-and-test
       # - aws-ecs/deploy-service-update:
-      #   family: '${AWS_RESOURCE_NAME_PREFIX}-service'
-      #   cluster-name: '${AWS_RESOURCE_NAME_PREFIX}-cluster'
-      #   container-image-name-updates: 'container=${AWS_RESOURCE_NAME_PREFIX}-service,tag=${CIRCLE_SHA1}'
-      #   filters:
-      #     branches:
-      #       only:
-      #         - master
-      #   requires:
-      #     - aws-ecr/build-and-push-image
+      #     family: '${AWS_RESOURCE_NAME_PREFIX}-service'
+      #     cluster-name: '${AWS_RESOURCE_NAME_PREFIX}-cluster'
+      #     container-image-name-updates: 'container=${AWS_RESOURCE_NAME_PREFIX}-service,tag=${CIRCLE_SHA1}'
+      #     filters:
+      #       branches:
+      #         only:
+      #           - master
+      #     requires:
+      #       - aws-ecr/build-and-push-image
