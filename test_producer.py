@@ -6,8 +6,6 @@ import boto3
 import moto
 import moto.backends
 
-import producer
-
 ACCOUNT_ID = "fake-account-id"
 STREAM_NAME = "stream1"
 
@@ -16,6 +14,8 @@ os.environ["TWITTER_API_KEY"] = "fake-api-key"
 os.environ["TWITTER_API_SECRET_KEY"] = "fake-api-secret-key"
 os.environ["TWITTER_ACCESS_TOKEN"] = "fake-access-token"
 os.environ["TWITTER_ACCESS_TOKEN_SECRET"] = "fake-access-token-secret"
+
+import producer
 
 
 def create_s3_delivery_stream(client, stream_name):
