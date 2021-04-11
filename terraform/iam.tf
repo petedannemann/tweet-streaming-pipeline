@@ -141,6 +141,12 @@ data "aws_iam_policy_document" "circleci_access_ecr_policy" {
   }
 }
 
+resource "aws_iam_user_policy" "circleci_access_ecr_policy" {
+  name   = "circleci_access_ecr_policy"
+  user   = aws_iam_user.circleci_user.name
+  policy = data.aws_iam_policy_document.circleci_access_ecr_policy.json
+}
+
 data "aws_iam_policy_document" "circleci_authorize_ecr_policy" {
   statement {
     effect = "Allow"
