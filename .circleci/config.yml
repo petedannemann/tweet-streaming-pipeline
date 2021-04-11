@@ -1,5 +1,9 @@
 version: 2.1
 
+orbs:
+  aws-ecr: circleci/aws-ecr@6.15.3
+  aws-ecs: circleci/aws-ecs@02.10.0
+
 executors:
   python:
     docker:
@@ -13,8 +17,29 @@ jobs:
       - run: pip install -r requirements.txt
       - run: pip install -r test_requirements.txt
       - run: python -m unittest test_producer.py
+  build-and-push-image:
+    - aws-ecr/build-and-push-image:
+        repo: '${CIRCLE_PROJECT_REPONAME}'
+        tag: '${CIRCLE_SHA1}'
+  # deploy:
+  #   - aws-ecs/deploy-service-update:
+  #       family: "${AWS_RESOURCE_NAME_PREFIX}-service"
+  #       cluster-name: "${AWS_RESOURCE_NAME_PREFIX}-cluster"
+  #       container-image-name-updates: "container=${AWS_RESOURCE_NAME_PREFIX}-service,tag=${CIRCLE_SHA1}"
 
 workflows:
   main:
     jobs:
       - build-and-test
+      - build-and-push-image
+          filters:
+            branches:
+              only: master
+          requires:
+            - build-and-test
+      # - deploy
+      #     filters:
+      #       branches:
+      #         only: master
+      #     requires:
+      #       - build-and-test
