@@ -1,0 +1,19 @@
+version: 2.1
+
+executors:
+  python:
+    docker:
+      - image: python:3.9.4-slim-buster
+
+jobs:
+  build-and-test:
+    executor: python
+    steps:
+      - checkout
+      - run: pip install -r requirements.txt
+      - run: python -m unittest test_producer.py
+
+workflows:
+  main:
+    jobs:
+      - build-and-test
