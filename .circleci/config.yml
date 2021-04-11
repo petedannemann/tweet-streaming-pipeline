@@ -32,9 +32,9 @@ workflows:
           requires:
             - build-and-test
       - aws-ecs/deploy-service-update:
-          family: '${AWS_RESOURCE_NAME_PREFIX}-service'
-          cluster-name: '${AWS_RESOURCE_NAME_PREFIX}-cluster'
-          container-image-name-updates: 'container=${AWS_RESOURCE_NAME_PREFIX}-service,tag=${CIRCLE_SHA1}'
+          family: twitter
+          cluster-name: twitter-cluster
+          container-image-name-updates: 'container=twitter-stream,image-and-tag=${CIRCLE_PROJECT_REPONAME}:${CIRCLE_SHA1}'
           filters:
             branches:
               only:
