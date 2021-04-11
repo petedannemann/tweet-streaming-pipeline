@@ -31,15 +31,17 @@ workflows:
   main:
     jobs:
       - build-and-test
-      - build-and-push-image
+      - build-and-push-image:
           filters:
             branches:
-              only: master
+              only:
+                - master
           requires:
             - build-and-test
-      # - deploy
+      # - deploy:
       #     filters:
       #       branches:
-      #         only: master
+      #         only:
+      #           - master
       #     requires:
       #       - build-and-test
