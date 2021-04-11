@@ -4,6 +4,7 @@ import os
 import json
 import sys
 import random
+import typing
 
 import boto3
 import tweepy
@@ -19,12 +20,12 @@ TWITTER_ACCESS_TOKEN_SECRET = os.environ["TWITTER_ACCESS_TOKEN_SECRET"]
 
 
 class MyStreamListener(tweepy.StreamListener):
-    def __init__(self, stream_name):
+    def __init__(self, stream_name: str, region: typing.Optional[str] ='us-east-1') -> None:
         super().__init__()
-        self.firehose_client = boto3.client('firehose')
+        self.firehose_client = boto3.client('firehose', region)
         self.stream_name = stream_name
 
-    def on_data(self, data):
+    def on_data(self, data: bytes) -> bool:
         # TODO: batch these puts
         self.firehose_client.put_record(
             DeliveryStreamName=self.stream_name,
@@ -34,10 +35,10 @@ class MyStreamListener(tweepy.StreamListener):
         logger.debug("Publishing record to the stream: %s", json.dumps(data))
         return True
 
-    def on_status(self, status):
+    def on_status(self, status: typing.Dict[str, str]) -> None:
         logger.info("Received status: %s", status.text)
 
-    def on_error(self, status_code):
+    def on_error(self, status_code) -> bool:
         if status_code == 420:
             logging.warn("Rate limit exceeded.")
             return True
@@ -47,7 +48,7 @@ class MyStreamListener(tweepy.StreamListener):
         return True
 
 
-def main(stream_name):
+def main(stream_name: str) -> None:
     auth = tweepy.OAuthHandler(TWITTER_API_KEY, TWITTER_API_SECRET_KEY)
     auth.set_access_token(TWITTER_ACCESS_TOKEN, TWITTER_ACCESS_TOKEN_SECRET)
     stream_listener = MyStreamListener(stream_name)
