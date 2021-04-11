@@ -1,0 +1,14 @@
+version: '3'
+
+services:
+  producer:
+    build: .
+    environment:
+      - STREAM_NAME
+      - TWITTER_API_KEY
+      - TWITTER_API_SECRET_KEY
+      - TWITTER_ACCESS_TOKEN
+      - TWITTER_ACCESS_TOKEN_SECRET
+    volumes:
+      - ~/.aws/credentials:/home/appuser/.aws/credentials
+      - ./producer.py:/home/appuser/producer.py
