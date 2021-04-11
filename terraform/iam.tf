@@ -117,6 +117,20 @@ resource "aws_iam_role_policy" "ecs_publish_to_firehose_policy" {
   policy = data.aws_iam_policy_document.ecs_publish_to_firehose_policy.json
 }
 
+data "aws_iam_policy_document" "ecs_access_secrets_manager_policy" {
+  statement {
+    effect    = "Allow"
+    actions   = ["secretsmanager:GetSecret", "secretsmanager:GetSecretValue"]
+    resources = [aws_secretsmanager_secret.this.arn]
+  }
+}
+
+resource "aws_iam_role_policy" "ecs_access_secrets_manager_policy" {
+  name   = "ecs_access_secrets_manager_policy"
+  role   = aws_iam_role.twitter_stream_ecs_role.name
+  policy = data.aws_iam_policy_document.ecs_access_secrets_manager_policy.json
+}
+
 resource "aws_iam_user" "circleci_user" {
   name = "circleci_user"
 }

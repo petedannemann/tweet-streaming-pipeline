@@ -32,3 +32,8 @@ variable "glue_catalog_table_name" {
   description = "Name of Glue Catalog Table"
   default     = "tweets"
 }
+
+variable "secrets" {
+  # Should have keys of STREAM_NAME, TWITTER_API_KEY, TWITTER_API_SECRET_KEY, TWITTER_ACCESS_TOKEN, TWITTER_ACCESS_TOKEN_SECRET
+  type = map(string)
+}
