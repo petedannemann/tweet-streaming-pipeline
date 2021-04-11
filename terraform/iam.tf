@@ -85,3 +85,78 @@ resource "aws_iam_role_policy" "cloudwatch_logs_policy" {
   role   = aws_iam_role.cloudwatch_logs_role.name
   policy = data.aws_iam_policy_document.cloudwatch_logs_assume_policy.json
 }
+
+data "aws_iam_policy_document" "ecs_assume_role" {
+  statement {
+    effect  = "Allow"
+    actions = ["sts:AssumeRole"]
+
+    principals {
+      type        = "Service"
+      identifiers = ["ecs-tasks.amazonaws.com"]
+    }
+  }
+}
+
+resource "aws_iam_role" "twitter_stream_ecs_role" {
+  name               = "twitter_stream_ecs_role"
+  assume_role_policy = data.aws_iam_policy_document.ecs_assume_role.json
+}
+
+data "aws_iam_policy_document" "ecs_publish_to_firehose_policy" {
+  statement {
+    effect    = "Allow"
+    actions   = ["firehose:PutRecord", "firehose:PutRecordBatch"]
+    resources = [aws_kinesis_firehose_delivery_stream.kinesis_firehose_stream.arn]
+  }
+}
+
+resource "aws_iam_role_policy" "ecs_publish_to_firehose_policy" {
+  name   = "ecs_publish_to_firehose_policy"
+  role   = aws_iam_role.twitter_stream_ecs_role.name
+  policy = data.aws_iam_policy_document.ecs_publish_to_firehose_policy.json
+}
+
+resource "aws_iam_user" "circleci_user" {
+  name = "circleci_user"
+}
+
+data "aws_iam_policy_document" "circleci_access_ecr_policy" {
+  statement {
+    effect = "Allow"
+    actions = [
+      "ecr:GetDownloadUrlForLayer",
+      "ecr:BatchGetImage",
+      "ecr:BatchCheckLayerAvailability",
+      "ecr:PutImage",
+      "ecr:InitiateLayerUpload",
+      "ecr:UploadLayerPart",
+      "ecr:CompleteLayerUpload",
+      "ecr:DescribeRepositories",
+      "ecr:GetRepositoryPolicy",
+      "ecr:ListImages",
+      "ecr:SetRepositoryPolicy"
+    ]
+    resources = [aws_ecr_repository.this.arn]
+  }
+}
+
+data "aws_iam_policy_document" "circleci_authorize_ecr_policy" {
+  statement {
+    effect = "Allow"
+    actions = [
+      "ecr:GetAuthorizationToken"
+    ]
+    resources = ["*"]
+  }
+}
+
+resource "aws_iam_user_policy" "circleci_authorize_ecr_policy" {
+  name   = "circleci_authorize_ecr_policy"
+  user   = aws_iam_user.circleci_user.name
+  policy = data.aws_iam_policy_document.circleci_authorize_ecr_policy.json
+}
+
+resource "aws_iam_access_key" "circleci" {
+  user = aws_iam_user.circleci_user.name
+}
