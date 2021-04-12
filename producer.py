@@ -56,7 +56,7 @@ def main(stream_name: str) -> None:
     while True:
         try:
             stream = tweepy.Stream(auth=auth, listener=stream_listener)
-            stream.filter(track=['python'])
+            stream.sample()
         except KeyboardInterrupt:
             logging.info("Killing streaming process...")
             try:
