@@ -4,6 +4,7 @@ import os
 import json
 import sys
 import random
+import time
 import typing
 
 import boto3
@@ -11,6 +12,10 @@ import tweepy
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+DEFAULT_BUFFER_SIZE = int(os.environ.get("DEFAULT_BUFFER_SIZE", "500"))
+KINESIS_RETRY_COUNT = 10
+KINESIS_RETRY_WAIT_IN_SEC = 0.1
 
 STREAM_NAME = os.environ["STREAM_NAME"]
 TWITTER_API_KEY = os.environ["TWITTER_API_KEY"]
@@ -20,19 +25,48 @@ TWITTER_ACCESS_TOKEN_SECRET = os.environ["TWITTER_ACCESS_TOKEN_SECRET"]
 
 
 class MyStreamListener(tweepy.StreamListener):
-    def __init__(self, stream_name: str, region: typing.Optional[str] ='us-east-1') -> None:
+    def __init__(
+        self,
+        stream_name: str,
+        region: typing.Optional[str] = 'us-east-1',
+    ) -> None:
         super().__init__()
         self.firehose_client = boto3.client('firehose', region)
         self.stream_name = stream_name
+        self._buffer = []
+
+    def _flush(
+        self,
+        kinesis_records: typing.List[typing.Dict[str, bytes]],
+        retry_count: typing.Optional[int] = KINESIS_RETRY_COUNT,
+    ) -> None:
+        put_response = self.firehose_client.put_record_batch(
+            DeliveryStreamName=self.stream_name,
+            Records=kinesis_records,
+        )
+
+        failed_count = put_response['FailedPutCount']
+
+        if failed_count > 0:
+            if retry_count > 0:
+                retry_kinesis_records = []
+                for idx, record in enumerate(put_response['Records']):
+                    if 'ErrorCode' in record:
+                        retry_kinesis_records.append(kinesis_records[idx])
+                time.sleep(KINESIS_RETRY_WAIT_IN_SEC * (KINESIS_RETRY_COUNT - retry_count + 1))
+                self._flush(retry_kinesis_records, retry_count - 1)
+            else:
+                logger.error("Not able to put records after retries. Records: %s", put_response["Records"])
+        logger.info("Flushed tweets to kinesis firehose")
 
     def on_data(self, data: bytes) -> bool:
-        # TODO: batch these puts
-        self.firehose_client.put_record(
-            DeliveryStreamName=self.stream_name,
-            Record={'Data': data},
-        )
-        logger.info("Published tweet to kinesis firehose")
-        logger.debug("Publishing record to the stream: %s", json.dumps(data))
+        logger.debug("Received record: %s", json.dumps(data))
+        self._buffer.append({'Data': data})
+
+        if len(self._buffer) >= DEFAULT_BUFFER_SIZE:
+            self._flush(self._buffer)
+            self._buffer = []
+
         return True
 
     def on_status(self, status: typing.Dict[str, str]) -> None:

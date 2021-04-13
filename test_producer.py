@@ -14,6 +14,7 @@ os.environ["TWITTER_API_KEY"] = "fake-api-key"
 os.environ["TWITTER_API_SECRET_KEY"] = "fake-api-secret-key"
 os.environ["TWITTER_ACCESS_TOKEN"] = "fake-access-token"
 os.environ["TWITTER_ACCESS_TOKEN_SECRET"] = "fake-access-token-secret"
+os.environ["DEFAULT_BUFFER_SIZE"] = "2"
 
 import producer
 
@@ -41,13 +42,19 @@ class ProducerTest(unittest.TestCase):
 
     def test_on_data(self):
         data = "{\"text\":\"my great tweet\"}"
-        self.listener.on_data(data)
+
+        for _ in range(5):
+            self.listener.on_data(data)
+        
         streams = self.firehose_client.list_delivery_streams()["DeliveryStreamNames"]
         self.assertEqual([STREAM_NAME], streams)
 
         firehose_records = moto.backends.get_backend("kinesis")["us-east-1"].delivery_streams[STREAM_NAME].records
-        self.assertEqual(1, len(firehose_records))
-        self.assertEqual(data, base64.b64decode(firehose_records[0].record_data).decode("utf-8"))
+        self.assertEqual(4, len(firehose_records))
+        self.assertEqual([data] * 4, [base64.b64decode(record.record_data).decode("utf-8") for record in firehose_records])
+
+    def test_on_data_retry(self):
+        self.assertTrue(False)
         
 
 if __name__ == "__main__":
