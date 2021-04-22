@@ -34,6 +34,6 @@ variable "glue_catalog_table_name" {
 }
 
 variable "secrets" {
-  # Should have keys of STREAM_NAME, TWITTER_API_KEY, TWITTER_API_SECRET_KEY, TWITTER_ACCESS_TOKEN, TWITTER_ACCESS_TOKEN_SECRET
+  # Should have keys of TWITTER_API_KEY, TWITTER_API_SECRET_KEY, TWITTER_ACCESS_TOKEN, TWITTER_ACCESS_TOKEN_SECRET
   type = map(string)
 }
