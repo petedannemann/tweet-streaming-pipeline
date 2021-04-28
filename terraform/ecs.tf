@@ -58,11 +58,12 @@ resource "aws_ecs_service" "this" {
   cluster         = aws_ecs_cluster.this.id
   task_definition = aws_ecs_task_definition.this.arn
   # Change this to 1 to start cluster
-  desired_count = 0
+  desired_count = 1
   launch_type   = "FARGATE"
 
   network_configuration {
-    subnets         = [aws_subnet.subnet_a.id]
-    security_groups = [aws_security_group.internal_traffic.id, aws_security_group.ecs_task_access.id]
+    subnets          = [aws_subnet.private_subnet.id]
+    security_groups  = [aws_security_group.ecs_task.id]
+    assign_public_ip = false
   }
 }

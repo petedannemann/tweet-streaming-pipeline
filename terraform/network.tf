@@ -7,20 +7,121 @@ resource "aws_vpc" "main" {
   }
 }
 
-resource "aws_subnet" "subnet_a" {
-  availability_zone = "us-east-1a"
-  vpc_id            = aws_vpc.main.id
-  cidr_block        = "10.0.1.0/24"
+resource "aws_subnet" "private_subnet" {
+  availability_zone       = "us-east-1a"
+  vpc_id                  = aws_vpc.main.id
+  cidr_block              = "10.0.1.0/24"
+  map_public_ip_on_launch = false
 
   tags = {
-    Name = "Subnet for ECS"
+    Name = "Private subnet for ECS"
   }
 }
 
-resource "aws_security_group" "internal_traffic" {
-  name        = "vpce"
-  description = "Allow traffic within the VPC"
-  vpc_id      = aws_vpc.main.id
+resource "aws_subnet" "public_subnet" {
+  availability_zone       = "us-east-1a"
+  vpc_id                  = aws_vpc.main.id
+  cidr_block              = "10.0.0.0/24"
+  map_public_ip_on_launch = false
+
+  tags = {
+    Name = "Public subnet for ECS"
+  }
+}
+
+resource "aws_internet_gateway" "this" {
+  vpc_id = aws_vpc.main.id
+
+  tags = {
+    Name = "ecs-gateway"
+  }
+}
+
+resource "aws_route_table" "igw" {
+  vpc_id = aws_vpc.main.id
+
+  route {
+    cidr_block = "0.0.0.0/0"
+    gateway_id = aws_internet_gateway.this.id
+  }
+
+  tags = {
+    Name = "ecs-igw-routing-table"
+  }
+}
+
+resource "aws_route_table_association" "igw_routing_table_association" {
+  count          = 1
+  subnet_id      = aws_subnet.public_subnet.id
+  route_table_id = aws_route_table.igw.id
+}
+
+resource "aws_eip" "this" {
+  vpc = true
+
+  tags = {
+    Name = "ecs-elastic-ip"
+  }
+}
+
+resource "aws_nat_gateway" "this" {
+  allocation_id = aws_eip.this.id
+  subnet_id     = aws_subnet.public_subnet.id
+
+  tags = {
+    "Name" = "ecs-NATGateway"
+  }
+}
+
+resource "aws_route_table" "ngw" {
+  vpc_id = aws_vpc.main.id
+
+  route {
+    cidr_block = "0.0.0.0/0"
+    gateway_id = aws_nat_gateway.this.id
+  }
+
+  tags = {
+    Name = "ecs-routing-table"
+  }
+}
+
+resource "aws_route_table_association" "ngw_routing_table_association" {
+  count          = 1
+  subnet_id      = aws_subnet.private_subnet.id
+  route_table_id = aws_route_table.ngw.id
+}
+
+resource "aws_route_table" "vpce" {
+  vpc_id = aws_vpc.main.id
+
+  route {
+    cidr_block = "0.0.0.0/0"
+    gateway_id = aws_nat_gateway.this.id
+  }
+
+  tags = {
+    Name = "ecs-routing-table"
+  }
+}
+
+resource "aws_vpc_endpoint_route_table_association" "s3_endpoint" {
+  route_table_id  = "${aws_route_table.vpce.id}"
+  vpc_endpoint_id = "${aws_vpc_endpoint.s3.id}"
+}
+
+resource "aws_vpc_endpoint" "s3" {
+  vpc_id       = aws_vpc.main.id
+  service_name = "com.amazonaws.${var.region}.s3"
+
+  tags = {
+    Name = "s3-vpc-endpoint"
+  }
+}
+
+resource "aws_security_group" "vpce" {
+  name   = "ecs-vpce"
+  vpc_id = aws_vpc.main.id
   ingress {
     from_port   = 443
     to_port     = 443
@@ -28,16 +129,10 @@ resource "aws_security_group" "internal_traffic" {
     cidr_blocks = [aws_vpc.main.cidr_block]
   }
   egress {
-    from_port   = 53
-    to_port     = 53
-    protocol    = "tcp"
-    cidr_blocks = [aws_vpc.main.cidr_block]
-  }
-  egress {
-    from_port   = 53
-    to_port     = 53
-    protocol    = "udp"
-    cidr_blocks = [aws_vpc.main.cidr_block]
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
   }
   # https://github.com/hashicorp/terraform-provider-aws/issues/265#issuecomment-471490744
   lifecycle {
@@ -45,76 +140,45 @@ resource "aws_security_group" "internal_traffic" {
   }
 }
 
-resource "aws_security_group" "ecs_task_access" {
-  name        = "ecs_task_access"
-  description = "Allow traffic within the VPC for ECS usage"
-  vpc_id      = aws_vpc.main.id
-  ingress {
+resource "aws_security_group" "ecs_task" {
+  name   = "ecs"
+  vpc_id = aws_vpc.main.id
+  egress {
     from_port   = 443
     to_port     = 443
     protocol    = "tcp"
     cidr_blocks = [aws_vpc.main.cidr_block]
   }
   egress {
-    from_port = 443
-    to_port   = 443
-    protocol  = "tcp"
-  }
-  egress {
-    from_port   = 53
-    to_port     = 53
-    protocol    = "tcp"
-    cidr_blocks = [aws_vpc.main.cidr_block]
-  }
-  egress {
-    from_port   = 53
-    to_port     = 53
-    protocol    = "udp"
-    cidr_blocks = [aws_vpc.main.cidr_block]
-  }
-  # https://github.com/hashicorp/terraform-provider-aws/issues/265#issuecomment-471490744
-  lifecycle {
-    create_before_destroy = true
-  }
-}
-
-# Need these endpoints for ECS to talk to other AWS services
-# https://aws.amazon.com/blogs/security/how-to-connect-to-aws-secrets-manager-service-within-a-virtual-private-cloud/
-# https://docs.aws.amazon.com/AmazonECR/latest/userguide/vpc-endpoints.html
-# https://dev.to/danquack/private-fargate-deployment-with-vpc-endpoints-1h0p
-resource "aws_vpc_endpoint" "secrets_manager" {
-  vpc_id              = aws_vpc.main.id
-  subnet_ids          = [aws_subnet.subnet_a.id]
-  vpc_endpoint_type   = "Interface"
-  service_name        = "com.amazonaws.${var.region}.secretsmanager"
-  private_dns_enabled = true
-  security_group_ids  = [aws_security_group.internal_traffic.id]
-
-  tags = {
-    Name = "secrets-manager-endpoint"
+    from_port       = 443
+    to_port         = 443
+    protocol        = "tcp"
+    prefix_list_ids = [aws_vpc_endpoint.s3.prefix_list_id]
   }
 }
 
 resource "aws_vpc_endpoint" "ecr_dkr" {
   vpc_id              = aws_vpc.main.id
-  subnet_ids          = [aws_subnet.subnet_a.id]
-  vpc_endpoint_type   = "Interface"
-  service_name        = "com.amazonaws.${var.region}.ecr.dkr"
   private_dns_enabled = true
-  security_group_ids  = [aws_security_group.internal_traffic.id]
+  service_name        = "com.amazonaws.${var.region}.ecr.dkr"
+  vpc_endpoint_type   = "Interface"
+  security_group_ids = [
+    aws_security_group.vpce.id,
+  ]
+  subnet_ids = [aws_subnet.private_subnet.id]
 
   tags = {
-    Name = "ecr-dkr-endpoint"
+    Name = "dkr-endpoint"
   }
 }
 
 resource "aws_vpc_endpoint" "ecr_api" {
   vpc_id              = aws_vpc.main.id
-  subnet_ids          = [aws_subnet.subnet_a.id]
+  subnet_ids          = [aws_subnet.private_subnet.id]
   vpc_endpoint_type   = "Interface"
   service_name        = "com.amazonaws.${var.region}.ecr.api"
   private_dns_enabled = true
-  security_group_ids  = [aws_security_group.internal_traffic.id]
+  security_group_ids  = [aws_security_group.vpce.id]
 
   tags = {
     Name = "ecr-api-endpoint"
@@ -126,10 +190,26 @@ resource "aws_vpc_endpoint" "logs" {
   private_dns_enabled = true
   service_name        = "com.amazonaws.${var.region}.logs"
   vpc_endpoint_type   = "Interface"
-  security_group_ids  = [aws_security_group.internal_traffic.id]
+  security_group_ids = [
+    aws_security_group.vpce.id,
+  ]
+  subnet_ids = [aws_subnet.private_subnet.id]
 
   tags = {
     Name = "logs-endpoint"
+  }
+}
+
+resource "aws_vpc_endpoint" "secrets_manager" {
+  vpc_id              = aws_vpc.main.id
+  subnet_ids          = [aws_subnet.private_subnet.id]
+  vpc_endpoint_type   = "Interface"
+  service_name        = "com.amazonaws.${var.region}.secretsmanager"
+  private_dns_enabled = true
+  security_group_ids  = [aws_security_group.vpce.id]
+
+  tags = {
+    Name = "secrets-manager-endpoint"
   }
 }
 
@@ -138,28 +218,9 @@ resource "aws_vpc_endpoint" "firehose" {
   private_dns_enabled = true
   service_name        = "com.amazonaws.${var.region}.kinesis-firehose"
   vpc_endpoint_type   = "Interface"
-  security_group_ids  = [aws_security_group.internal_traffic.id]
+  security_group_ids  = [aws_security_group.vpce.id]
 
   tags = {
     Name = "firehose-endpoint"
-  }
-}
-
-resource "aws_route_table" "private" {
-  vpc_id = aws_vpc.main.id
-
-  tags = {
-    Name = "private-route-table-for-s3"
-  }
-}
-
-resource "aws_vpc_endpoint" "s3" {
-  vpc_id            = aws_vpc.main.id
-  service_name      = "com.amazonaws.${var.region}.s3"
-  vpc_endpoint_type = "Gateway"
-  route_table_ids   = [aws_route_table.private.id]
-
-  tags = {
-    Name = "s3-endpoint"
   }
 }

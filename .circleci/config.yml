@@ -24,7 +24,7 @@ workflows:
       - build-and-test
       - aws-ecr/build-and-push-image:
           repo: '${CIRCLE_PROJECT_REPONAME}'
-          tag: '${CIRCLE_SHA1}'
+          tag: 'latest'
           filters:
             branches:
               only:

@@ -179,13 +179,19 @@ data "aws_iam_policy_document" "ecs_write_to_cloudwatch_policy" {
       "logs:PutLogEvents",
       "logs:DescribeLogStreams"
     ]
-    resources = [aws_cloudwatch_log_group.ecs.arn]
+    resources = ["*"]
   }
 }
 
-resource "aws_iam_role_policy" "ecs_write_to_cloudwatch_policy" {
-  name   = "ecs_write_to_cloudwatch_policy"
+resource "aws_iam_role_policy" "ecs_task_write_to_cloudwatch_policy" {
+  name   = "ecs_task_write_to_cloudwatch_policy"
   role   = aws_iam_role.twitter_stream_ecs_task_role.name
+  policy = data.aws_iam_policy_document.ecs_write_to_cloudwatch_policy.json
+}
+
+resource "aws_iam_role_policy" "ecs_execution_write_to_cloudwatch_policy" {
+  name   = "ecs_execution_write_to_cloudwatch_policy"
+  role   = aws_iam_role.twitter_stream_ecs_execution_role.name
   policy = data.aws_iam_policy_document.ecs_write_to_cloudwatch_policy.json
 }
 
