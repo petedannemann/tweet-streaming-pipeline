@@ -34,6 +34,7 @@ workflows:
       - aws-ecs/deploy-service-update:
           family: twitter
           cluster-name: twitter-cluster
+          service-name: twitter-stream
           container-image-name-updates: 'container=tweet-streaming-pipeline,image-and-tag=${CIRCLE_PROJECT_REPONAME}:latest'
           filters:
             branches:

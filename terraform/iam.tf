@@ -242,7 +242,8 @@ data "aws_iam_policy_document" "circleci_update_ecs_policy" {
     effect = "Allow"
     actions = [
       "ecs:Describe*",
-      "ecs:UpdateService"
+      "ecs:UpdateService",
+      "ecs:RegisterTaskDefinition",
     ]
     resources = ["*"]
   }
@@ -252,6 +253,22 @@ resource "aws_iam_user_policy" "circleci_update_ecs_policy" {
   name   = "circleci_update_ecs_policy"
   user   = aws_iam_user.circleci_user.name
   policy = data.aws_iam_policy_document.circleci_update_ecs_policy.json
+}
+
+data "aws_iam_policy_document" "circleci_update_ecs_iam_policy" {
+  statement {
+    effect = "Allow"
+    actions = [
+      "iam:PassRole"
+    ]
+    resources = [aws_iam_role.twitter_stream_ecs_task_role.arn, aws_iam_role.twitter_stream_ecs_execution_role.arn]
+  }
+}
+
+resource "aws_iam_user_policy" "circleci_update_ecs_iam_policy" {
+  name   = "circleci_update_ecs_iam_policy"
+  user   = aws_iam_user.circleci_user.name
+  policy = data.aws_iam_policy_document.circleci_update_ecs_iam_policy.json
 }
 
 resource "aws_iam_access_key" "circleci" {
