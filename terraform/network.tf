@@ -143,6 +143,7 @@ resource "aws_security_group" "vpce" {
 resource "aws_security_group" "ecs_task" {
   name   = "ecs"
   vpc_id = aws_vpc.main.id
+  # TODO: top two egress's may be redudant with the internet access one
   egress {
     from_port   = 443
     to_port     = 443
@@ -154,6 +155,12 @@ resource "aws_security_group" "ecs_task" {
     to_port         = 443
     protocol        = "tcp"
     prefix_list_ids = [aws_vpc_endpoint.s3.prefix_list_id]
+  }
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
   }
 }
 
@@ -215,6 +222,7 @@ resource "aws_vpc_endpoint" "secrets_manager" {
 
 resource "aws_vpc_endpoint" "firehose" {
   vpc_id              = aws_vpc.main.id
+  subnet_ids          = [aws_subnet.private_subnet.id]
   private_dns_enabled = true
   service_name        = "com.amazonaws.${var.region}.kinesis-firehose"
   vpc_endpoint_type   = "Interface"

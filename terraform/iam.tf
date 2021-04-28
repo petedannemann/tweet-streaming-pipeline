@@ -237,6 +237,23 @@ resource "aws_iam_user_policy" "circleci_authorize_ecr_policy" {
   policy = data.aws_iam_policy_document.authorize_ecr_policy.json
 }
 
+data "aws_iam_policy_document" "circleci_update_ecs_policy" {
+  statement {
+    effect = "Allow"
+    actions = [
+      "ecs:Describe*",
+      "ecs:UpdateService"
+    ]
+    resources = [aws_ecs_service.this.arn]
+  }
+}
+
+resource "aws_iam_user_policy" "circleci_update_ecs_policy" {
+  name   = "circleci_update_ecs_policy"
+  user   = aws_iam_user.circleci_user.name
+  policy = data.aws_iam_policy_document.circleci_update_ecs_policy.json
+}
+
 resource "aws_iam_access_key" "circleci" {
   user = aws_iam_user.circleci_user.name
 }
