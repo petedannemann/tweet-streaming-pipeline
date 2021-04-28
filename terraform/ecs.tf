@@ -20,27 +20,27 @@ resource "aws_ecs_task_definition" "this" {
       environment = [
         {
           "name" : "STREAM_NAME",
-          "valueFrom" : aws_kinesis_firehose_delivery_stream.kinesis_firehose_stream.name
+          "value" : aws_kinesis_firehose_delivery_stream.kinesis_firehose_stream.name
         }
       ]
-      # secrets = [
-      #   {
-      #     "name" : "TWITTER_API_KEY",
-      #     "valueFrom" : "${aws_secretsmanager_secret.this.arn}:twitter_api_key"
-      #   },
-      #   {
-      #     "name" : "TWITTER_API_SECRET_KEY",
-      #     "valueFrom" : "${aws_secretsmanager_secret.this.arn}:twitter_api_secret_key"
-      #   },
-      #   {
-      #     "name" : "TWITTER_ACCESS_TOKEN",
-      #     "valueFrom" : "${aws_secretsmanager_secret.this.arn}:twitter_access_token"
-      #   },
-      #   {
-      #     "name" : "TWITTER_ACCESS_TOKEN_SECRET",
-      #     "valueFrom" : "${aws_secretsmanager_secret.this.arn}:twitter_access_token_secret"
-      #   }
-      # ]
+      secrets = [
+        {
+          "name" : "TWITTER_API_KEY",
+          "valueFrom" : "${aws_secretsmanager_secret.this.arn}:twitter_api_key"
+        },
+        {
+          "name" : "TWITTER_API_SECRET_KEY",
+          "valueFrom" : "${aws_secretsmanager_secret.this.arn}:twitter_api_secret_key"
+        },
+        {
+          "name" : "TWITTER_ACCESS_TOKEN",
+          "valueFrom" : "${aws_secretsmanager_secret.this.arn}:twitter_access_token"
+        },
+        {
+          "name" : "TWITTER_ACCESS_TOKEN_SECRET",
+          "valueFrom" : "${aws_secretsmanager_secret.this.arn}:twitter_access_token_secret"
+        }
+      ]
       logConfiguration = {
         logDriver = "awslogs"
         options = {
