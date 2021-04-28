@@ -17,7 +17,7 @@ resource "aws_kinesis_firehose_delivery_stream" "kinesis_firehose_stream" {
     role_arn    = aws_iam_role.kinesis_firehose_stream_role.arn
     bucket_arn  = aws_s3_bucket.kinesis_firehose_stream_bucket.arn
     buffer_size = 128
-    prefix      = var.s3_prefix
+    prefix      = "${var.s3_prefix}/"
 
     cloudwatch_logging_options {
       enabled         = true

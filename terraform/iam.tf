@@ -244,7 +244,7 @@ data "aws_iam_policy_document" "circleci_update_ecs_policy" {
       "ecs:Describe*",
       "ecs:UpdateService"
     ]
-    resources = [aws_ecs_service.this.arn]
+    resources = ["*"]
   }
 }
 
