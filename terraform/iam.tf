@@ -142,6 +142,7 @@ data "aws_iam_policy_document" "ecs_access_secrets_manager_policy" {
     effect = "Allow"
     actions = [
       "secretsmanager:GetResourcePolicy",
+      "secretsmanager:GetSecret",
       "secretsmanager:GetSecretValue",
       "secretsmanager:DescribeSecret",
       "secretsmanager:ListSecretVersionIds"

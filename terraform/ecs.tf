@@ -26,19 +26,19 @@ resource "aws_ecs_task_definition" "this" {
       secrets = [
         {
           "name" : "TWITTER_API_KEY",
-          "valueFrom" : "${aws_secretsmanager_secret.this.arn}:twitter_api_key"
+          "valueFrom" : "${aws_secretsmanager_secret.this.arn}:twitter_api_key::"
         },
         {
           "name" : "TWITTER_API_SECRET_KEY",
-          "valueFrom" : "${aws_secretsmanager_secret.this.arn}:twitter_api_secret_key"
+          "valueFrom" : "${aws_secretsmanager_secret.this.arn}:twitter_api_secret_key::"
         },
         {
           "name" : "TWITTER_ACCESS_TOKEN",
-          "valueFrom" : "${aws_secretsmanager_secret.this.arn}:twitter_access_token"
+          "valueFrom" : "${aws_secretsmanager_secret.this.arn}:twitter_access_token::"
         },
         {
           "name" : "TWITTER_ACCESS_TOKEN_SECRET",
-          "valueFrom" : "${aws_secretsmanager_secret.this.arn}:twitter_access_token_secret"
+          "valueFrom" : "${aws_secretsmanager_secret.this.arn}:twitter_access_token_secret::"
         }
       ]
       logConfiguration = {
