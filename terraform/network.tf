@@ -82,7 +82,7 @@ resource "aws_route_table" "ngw" {
   }
 
   tags = {
-    Name = "ecs-routing-table"
+    Name = "ecs-ngw-routing-table"
   }
 }
 

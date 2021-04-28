@@ -139,8 +139,13 @@ resource "aws_iam_role_policy" "ecs_authorize_ecr_policy" {
 
 data "aws_iam_policy_document" "ecs_access_secrets_manager_policy" {
   statement {
-    effect    = "Allow"
-    actions   = ["secretsmanager:GetSecret", "secretsmanager:GetSecretValue"]
+    effect = "Allow"
+    actions = [
+      "secretsmanager:GetResourcePolicy",
+      "secretsmanager:GetSecretValue",
+      "secretsmanager:DescribeSecret",
+      "secretsmanager:ListSecretVersionIds"
+    ]
     resources = [aws_secretsmanager_secret.this.arn]
   }
 }
